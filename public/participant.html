@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111a24">
+  <meta name="referrer" content="no-referrer">
+  <title>Rallyboard · Participant dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/matchSearch.js" defer></script>
+  <script src="/matchDisplay.js" defer></script>
+  <script src="/participant.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/"><span class="brand-icon">R</span><span>rallyboard<small>PARTICIPANT DASHBOARD</small></span></a><nav class="main-nav" aria-label="Participant navigation"><button id="participant-nav-draw" type="button">Draw</button><button id="participant-nav-schedule" type="button">Schedule</button></nav><span class="participant-tag">LIVE TOURNAMENT VIEW</span></header>
+  <main class="participant-main">
+    <div class="page-heading"><div><div class="eyebrow"><span class="dot"></span> PARTICIPANT DASHBOARD</div><h1>Your matches,<br><em>all in one place.</em></h1><p>Follow the draw and check your court and match time.</p></div><div class="heading-mark" aria-hidden="true">✳</div></div>
+    <div id="participant-error" class="notice hidden" role="alert"></div>
+    <section id="participant-content" class="hidden">
+      <div class="participant-heading"><div><span class="step">TOURNAMENT DRAW</span><h2 id="participant-title"></h2><p id="participant-meta" class="muted"></p></div><span class="live-pill"><span class="dot"></span>UPDATES EVERY 30 SEC</span></div>
+      <div id="participant-pace" class="participant-pace hidden"></div>
+      <div class="match-search"><label for="participant-search">SEARCH MATCHES</label><input id="participant-search" type="search" placeholder="Player, institute, match number or court" autocomplete="off"><p class="fineprint">Search filters matches in the draw and schedule.</p></div>
+      <section id="participant-schedule-page" class="panel participant-panel" aria-labelledby="participant-schedule-title">
+        <span class="step">01 / MATCH CENTER</span><h2 id="participant-schedule-title">Match schedule</h2>
+        <p class="fineprint">Times are shown in your device's local time zone and may change. Check with your organizer for official updates.</p>
+        <div id="participant-schedule"></div>
+      </section>
+      <section id="participant-draw-page" class="panel participant-panel" aria-labelledby="participant-draw-title">
+        <span class="step">02 / TOURNAMENT BRACKET</span><h2 id="participant-draw-title">Draw &amp; results</h2>
+        <p class="fineprint">Scheduled times use your device's local time zone and may change.</p>
+        <div id="participant-rounds" class="rounds"></div>
+        <p id="participant-draw-no-results" class="fineprint hidden" role="status">No matches found. Try a different search.</p>
+      </section>
+    </section>
+  </main>
+  <footer><span>RALLYBOARD / BUILT FOR THE GAME</span><span>READ-ONLY PARTICIPANT VIEW</span></footer>
+</body>
+</html>

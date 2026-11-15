@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111a24">
+  <title>Rallyboard · Tournament draws</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/matchSearch.js" defer></script>
+  <script src="/matchDisplay.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-icon">R</span><span>rallyboard<small>TOURNAMENT DRAW MANAGER</small></span></a>
+    <nav id="main-nav" class="main-nav hidden" aria-label="Tournament navigation">
+      <a id="nav-draw" href="#draw">Draw</a>
+      <a id="nav-schedule" href="#schedule">Schedule</a>
+    </nav>
+    <div id="account" class="account hidden"><span id="account-name"></span><button id="logout" class="button ghost">Sign out</button></div>
+  </header>
+  <main>
+    <section id="welcome" class="welcome">
+      <div class="eyebrow"><span class="dot"></span> A BETTER WAY TO RUN THE DRAW</div>
+      <h1>Less admin.<br><em>More game.</em></h1>
+      <p>Turn your registration sheet into a balanced badminton draw, follow every match, and keep the tournament moving.</p>
+      <a class="button primary" href="/auth/google">Continue with Google <span>↗</span></a>
+      <p class="fineprint">Sign in with the Google account that can access your registration sheet. Your draws are private to your account.</p>
+      <div class="welcome-features"><span>01 &nbsp; CONNECT YOUR SHEET</span><span>02 &nbsp; BUILD YOUR BRACKET</span><span>03 &nbsp; PLAY IT OUT</span></div>
+    </section>
+    <section id="workspace" class="hidden">
+      <div class="page-heading"><div><div class="eyebrow"><span class="dot"></span> ORGANIZER WORKSPACE</div><h1>Your tournament,<br><em>under control.</em></h1><p>Create a draw from a Google Sheet or pick up where you left off.</p></div><div class="heading-mark" aria-hidden="true">✳</div></div>
+      <div id="notice" class="notice hidden" role="alert"></div>
+      <div class="layout">
+        <aside>
+          <div class="panel create-panel">
+            <div class="panel-heading"><div><span class="step">01 / SET UP</span><h2>New draw</h2></div><span class="plus">+</span></div>
+            <p class="muted">Connect a sheet and map only the columns you need.</p>
+            <form id="draw-form">
+              <label for="draw-name">DRAW NAME</label><input id="draw-name" required maxlength="120" placeholder="e.g. Women's singles">
+              <label for="sheet">GOOGLE SHEET URL OR ID</label><input id="sheet" required placeholder="Paste your sheet link">
+              <button id="load-sheet" type="button" class="button secondary full">Find worksheets <span>→</span></button>
+              <div id="mapping" class="hidden">
+                <label for="worksheet">WORKSHEET</label><select id="worksheet"></select>
+                <button id="load-columns" type="button" class="button secondary full">Load columns <span>→</span></button>
+                <div id="columns" class="hidden">
+                  <label for="name-column">PLAYER NAME <b>*</b></label><select id="name-column"></select>
+                  <label for="institute-column">INSTITUTE <b>*</b></label><select id="institute-column"></select>
+                  <label for="seed-column">SEED <span>OPTIONAL</span></label><select id="seed-column"></select>
+                  <label for="event-column">EVENT FILTER <span>OPTIONAL</span></label><select id="event-column"></select>
+                  <div id="event-wrap" class="hidden"><label for="event-value">EVENT VALUE</label><select id="event-value"></select></div>
+                  <p id="row-count" class="fineprint"></p>
+                  <button id="generate" class="button primary full" type="submit">Generate draw <span>↗</span></button>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="panel saved-panel"><div class="panel-heading"><div><span class="step">02 / YOUR DRAWS</span><h2>Saved draws</h2></div></div><div id="draw-list" class="draw-list"></div></div>
+        </aside>
+        <section class="panel bracket-panel">
+          <div id="empty-bracket" class="empty"><div class="empty-icon">✳</div><span class="step">READY WHEN YOU ARE</span><h2>Let's make a match.</h2><p>Connect your registration sheet to generate your first draw, or select a saved draw to continue.</p></div>
+          <div id="draw-view" class="hidden">
+            <div class="bracket-heading"><div><span class="step">03 / MATCH CENTER</span><h2 id="draw-title"></h2><p id="draw-meta" class="muted"></p></div><div class="actions"><a id="export" class="button secondary" href="#">Export Excel ↓</a><button id="delete" class="button danger">Delete</button></div></div>
+            <section class="share-panel" aria-label="Participant sharing">
+              <div><strong>Participant dashboard</strong><p id="share-description" class="fineprint">Publish this scheduled draw to create a private viewing link.</p></div>
+              <button id="share-toggle" class="button secondary" type="button">Publish draw</button>
+              <div id="share-link-wrap" class="share-link hidden">
+                <label for="share-link">PRIVATE SHARE LINK</label>
+                <div class="share-controls"><input id="share-link" readonly><button id="share-copy" class="button secondary" type="button">Copy link</button></div>
+                <p class="fineprint">Anyone with this link can view player names, institutes, seeds, results and the schedule. Unpublish to revoke access.</p>
+              </div>
+            </section>
+            <section class="share-panel" aria-label="SMS reminders">
+              <div><strong>SMS reminders</strong><p id="reminder-description" class="fineprint"></p></div>
+              <button id="reminder-toggle" class="button secondary" type="button">Enable SMS reminders</button>
+              <div class="share-link">
+                <p class="fineprint">Import phone numbers and SMS consent from the original registration sheet. Only “Yes” or “TRUE” means opted in. Use international numbers, for example +14155552671. Re-import after consent changes.</p>
+                <label for="reminder-sheet">REGISTRATION SHEET URL OR ID</label><input id="reminder-sheet" placeholder="Paste the original sheet link">
+                <button id="reminder-load-sheet" class="button secondary full" type="button">Find worksheets</button>
+                <div id="reminder-mapping" class="hidden">
+                  <label for="reminder-worksheet">WORKSHEET</label><select id="reminder-worksheet"></select>
+                  <button id="reminder-load-columns" class="button secondary full" type="button">Load columns</button>
+                  <div id="reminder-columns" class="hidden">
+                    <label for="reminder-name">PLAYER NAME</label><select id="reminder-name"></select>
+                    <label for="reminder-institute">INSTITUTE</label><select id="reminder-institute"></select>
+                    <label for="reminder-phone">PHONE NUMBER</label><select id="reminder-phone"></select>
+                    <label for="reminder-consent">SMS CONSENT</label><select id="reminder-consent"></select>
+                    <button id="reminder-import" class="button secondary full" type="button">Import opted-in contacts</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <div id="schedule-progress" class="schedule-progress hidden" role="status" aria-live="polite">
+              <span class="progress-label">TOURNAMENT PACE</span>
+              <strong id="progress-title"></strong>
+              <p id="progress-message"></p>
+            </div>
+            <p id="draw-warning" class="warning hidden"></p>
+            <div class="match-search">
+              <label for="organizer-search">SEARCH MATCHES</label>
+              <input id="organizer-search" type="search" placeholder="Player, institute, match number or court" autocomplete="off">
+              <p class="fineprint">Search filters matches in the current draw and schedule.</p>
+            </div>
+            <section id="draw-page" aria-label="Tournament draw">
+              <p class="fineprint">Start matches here, then select a winner and save the score. Changing a result clears dependent results when the participants change.</p>
+              <div id="rounds" class="rounds"></div>
+              <p id="draw-no-results" class="fineprint hidden" role="status">No matches found. Try a different search.</p>
+            </section>
+            <section id="schedule-page" class="schedule-section hidden" aria-labelledby="schedule-title">
+              <div class="schedule-heading"><div><span class="step">04 / COURT PLANNER</span><h2 id="schedule-title">Tournament schedule</h2><p class="muted">15 minutes in round 1, 20 minutes thereafter, with at least 20 minutes of player rest.</p></div></div>
+              <form id="schedule-form" class="schedule-form">
+                <div><label for="schedule-start">START DATE &amp; TIME</label><input id="schedule-start" type="datetime-local" required></div>
+                <div><label for="schedule-courts">COURTS</label><input id="schedule-courts" type="number" min="1" max="32" value="4" required></div>
+                <button class="button primary" id="schedule-save" type="submit">Create schedule</button>
+              </form>
+              <p class="fineprint">Times use your browser's local time zone. Start matches and save results on the Draw page. Later matches move back when necessary.</p>
+              <p id="schedule-locked" class="fineprint hidden"></p>
+              <p id="schedule-empty" class="fineprint">Create a schedule to see court assignments and match times.</p>
+              <div id="schedule-table" class="hidden">
+                <h3 class="schedule-group-title">Ongoing matches</h3>
+                <div class="table-wrap"><table class="schedule-table"><thead><tr><th>TIME</th><th>COURT</th><th>MATCH</th><th>PLAYERS</th><th>STATUS</th></tr></thead><tbody id="ongoing-rows"></tbody></table></div>
+                <h3 class="schedule-group-title">Upcoming matches</h3>
+                <div class="table-wrap"><table class="schedule-table"><thead><tr><th>TIME</th><th>COURT</th><th>MATCH</th><th>PLAYERS</th><th>STATUS</th></tr></thead><tbody id="upcoming-rows"></tbody></table></div>
+                <h3 class="schedule-group-title">Previous matches</h3>
+                <div class="table-wrap"><table class="schedule-table"><thead><tr><th>TIME</th><th>COURT</th><th>MATCH</th><th>PLAYERS</th><th>STATUS</th></tr></thead><tbody id="previous-rows"></tbody></table></div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer><span>RALLYBOARD / BUILT FOR THE GAME</span><span>BETTER DRAWS. BETTER TOURNAMENTS.</span></footer>
+</body>
+</html>
