@@ -34,6 +34,14 @@ Open `http://localhost:5000`. `APP_URL` must be the exact origin in the browser,
 
 Draws support 2–128 players in brackets of 8, 16, 32, 64 or 128 slots. Fixed seed positions are used and higher seeds receive first-round BYE priority. Remaining players are shuffled, and a bounded search tries to minimize same-institute encounters in the first three rounds. This is a best-effort heuristic, not a guarantee of an optimal or conflict-free draw; warnings appear if conflicts remain. Generate a new draw to try a different arrangement.
 
+## Organize and publish a tournament
+
+Create a tournament in the organizer workspace. Choose it when generating a draw, or open an existing draw and use **Assign to tournament** to move it or make it unassigned. Saved draws are grouped by tournament. Tournament grouping does not combine schedules: each draw still has its own courts and schedule, so organizers must coordinate conflicts across draws themselves.
+
+Select a tournament under **Manage tournament** and choose **Publish tournament** to create a private link. Participants can use it to switch between all scheduled draws assigned to that tournament, even if the draws are not individually published. Unscheduled draws are excluded automatically until scheduled. Draws assigned or scheduled later appear automatically; removing a draw from the tournament removes it from the tournament link. Anyone with the link can see all these draws, so obtain appropriate consent before publishing or adding draws. The link can be published before any draw is scheduled; viewers then see an empty state.
+
+**Unpublish tournament** revokes only the tournament link; individual draw links remain active. Republishing creates a new tournament link. Conversely, unpublishing an individual draw does not remove it from a published tournament. Tournament links are private bearer links, not account-based access controls; anyone holding one can forward it. A viewer who already saw or copied data may retain it. Deleting a draw removes it from the tournament view.
+
 ## Schedule matches
 
 Open a saved draw and use the top navigation to open **Schedule**. Choose a start date and time in your browser's local time zone and the number of courts (default four, maximum 32). The separate schedule view groups ongoing, upcoming, and previous matches with court assignments and scheduled start/end times. It reserves 15 minutes for first-round matches and 20 minutes for later matches. The initial schedule allows at least 20 minutes between the scheduled end of a match and the next match for every possible advancing player; BYEs are not scheduled as matches and do not themselves require rest.
@@ -49,6 +57,8 @@ Schedule settings can be changed until the first scheduled match starts. A sched
 After creating a schedule, select **Publish draw** in the organizer workspace and copy the private link. Participants can open it without signing in to view the read-only bracket, player names, institutes, seeds, scores and the current schedule, including ongoing, upcoming and previous matches. The dashboard refreshes every 30 seconds while visible; times are displayed in the viewer's device time zone. Organizers retain exclusive control over results and scheduling.
 
 Use **Draw** and **Schedule** in the navigation bar to switch views on either dashboard. The match search filters both views as you type by player name, institute, match number (for example, `#4` or `match 4`) or assigned court (for example, `court 4`). A number alone matches either a match number or court. Clear the search to restore all matches. Search applies to the selected draw and does not change saved results.
+
+On a phone, swipe sideways through the bracket rounds. The organizer's schedule displays each match as a compact card; the navigation buttons jump to the selected view.
 
 Publishing is opt-in per draw. Anyone with the link can view and forward it, so share it only with intended participants and obtain any required consent before publishing player information. Select **Unpublish draw** to immediately revoke the link; republishing creates a different link. Deleting the draw also revokes access. A viewer who already saw or copied data may retain it. Links use a secret fragment and the dashboard sends it in an authorization header: configure reverse proxies and monitoring not to log authorization headers. Use HTTPS for any deployed instance. Localhost links work only on the same device, so participants need the deployed HTTPS address for remote access.
 

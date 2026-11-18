@@ -5,3 +5,34 @@
 .share-panel{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:16px;background:#f6f9f2;border:1px solid #e6eee0;border-radius:10px;margin:12px 0}.share-panel strong{font-size:13px}.share-panel p{margin:4px 0}.share-link{flex-basis:100%}.share-link label{margin:8px 0}.share-controls{display:flex;gap:8px}.share-controls input{min-width:0}.share-controls button{white-space:nowrap}.participant-main{max-width:1450px}.participant-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:20px}.participant-heading h2{font-size:30px;margin:8px 0;letter-spacing:-1px}.participant-panel{padding:28px;margin:20px 0}.participant-panel h2{margin-bottom:8px}.participant-tag,.live-pill{font-size:10px;letter-spacing:1px;font-weight:800}.participant-tag{color:#b4c8b7}.live-pill{color:#5d7b4c;background:#e8f4dc;padding:10px 12px;border-radius:20px;white-space:nowrap}.participant-pace{padding:14px 18px;background:#e9f4dc;border-radius:10px;color:#375a34;font-size:13px;font-weight:700}.participant-group{padding-bottom:8px}.participant-match{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;border:1px solid #e7eee4;border-radius:10px;padding:14px;margin-top:8px}.participant-match strong{min-width:190px;flex:1;font-size:13px}.participant-match-meta{font-size:12px;color:#75877a}.participant-result{font-size:12px;font-weight:700;color:#5e852b}@media(max-width:600px){.participant-heading{align-items:flex-start;flex-direction:column}.participant-tag{display:none}.participant-panel{padding:20px}.participant-match{align-items:flex-start;flex-direction:column}.participant-match strong{min-width:0}.share-controls{flex-wrap:wrap}}
 .main-nav button{color:#c1d0c4;background:transparent;border:0;font:inherit;font-size:13px;font-weight:700;padding:10px 14px;border-radius:8px;cursor:pointer}.main-nav button[aria-current=page]{background:#c9f36b;color:#152717}.match-search{max-width:520px;margin:20px 0}.match-search label{margin-top:0}.match-search .fineprint{margin:6px 0 0}@media(max-width:600px){.main-nav button{flex:1;text-align:center}}
 .match-schedule{white-space:pre-line}
+.draw-group-title{margin:14px 0 2px;color:#64776a;font-size:11px;letter-spacing:.6px;text-transform:uppercase}.draw-tournament{max-width:380px;margin:12px 0 18px}.draw-tournament label{margin-top:0}.draw-tournament .fineprint{margin:6px 0}
+.mobile-bracket-hint{display:none}
+@media(max-width:600px){
+  .topbar{gap:10px}
+  .main-nav a,.main-nav button{min-height:44px;display:flex;align-items:center;justify-content:center}
+  .page-heading{padding:30px 0 24px}
+  .bracket-panel,.create-panel,.saved-panel{padding:20px}
+  input,select,.match select,.match input{font-size:16px;min-height:44px}
+  input[type=datetime-local]{min-width:0}
+  .button,.match .button{min-height:44px}
+  .match-search{max-width:none}
+  .fineprint{font-size:12px!important}
+  .mobile-bracket-hint{display:block;margin-bottom:0}
+  .rounds{scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+  .round{flex:0 0 min(255px,100%);min-width:0;scroll-snap-align:start}
+  .player>div,.participant-match,.draw-item strong,.participant-heading h2,.panel h2,.notice{min-width:0;overflow-wrap:anywhere}
+  .schedule-form{grid-template-columns:minmax(0,1fr)}
+  .schedule-form .button{grid-column:auto}
+  .schedule-table{min-width:0}
+  .schedule-table thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .schedule-table,.schedule-table tbody,.schedule-table tr{display:block}
+  .schedule-table tr{margin:10px 0;border:1px solid #e7eee4;border-radius:10px;padding:8px 12px;background:#fcfdfb}
+  .schedule-table tr[hidden]{display:none}
+  .schedule-table td{display:grid;grid-template-columns:65px minmax(0,1fr);gap:10px;padding:6px 0;border:0;overflow-wrap:anywhere}
+  .schedule-table td:before{content:attr(data-label);font-size:10px;font-weight:800;letter-spacing:.5px;color:#75877a;text-transform:uppercase}
+  .schedule-table td:not([data-label]){display:block}
+  .schedule-table td:not([data-label]):before{content:none}
+  .share-panel{align-items:stretch}
+  .share-panel>button,.share-controls button{width:100%}
+  .share-controls input{flex-basis:100%}
+}

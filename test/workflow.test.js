@@ -205,6 +205,81 @@ test("authenticated sheet-to-results workflow and account isolation", async () =
         assert.ok(reloaded.schedule.matches.find(item => item.matchNumber === scheduledMatch.number).finishedAt);
         assert.equal(reloaded.schedule.matches.find(item => item.matchNumber === scheduledMatch.number).court, selectedCourt);
         assert.equal(reloaded.schedule.progress.originalFinishAt, plan.schedule.originalFinishAt);
+        const tournamentResponse = await request("/api/tournaments", alice, {
+            method: "POST", body: JSON.stringify({ name: "Championship" })
+        });
+        assert.equal(tournamentResponse.status, 201);
+        const tournament = await tournamentResponse.json();
+        assert.equal((await (await request("/api/tournaments", bob)).json()).length, 0);
+        const otherTournament = await (await request("/api/tournaments", bob, {
+            method: "POST", body: JSON.stringify({ name: "Other owner" })
+        })).json();
+        assert.equal((await request(`/api/draws/${scheduledDraw.id}/tournament`, alice, {
+            method: "PUT", body: JSON.stringify({ tournamentId: otherTournament.id })
+        })).status, 400);
+        assert.equal((await request("/api/draws", alice, {
+            method: "POST", body: JSON.stringify({ name: "Invalid", tournamentId: otherTournament.id })
+        })).status, 400);
+        assert.equal((await request(`/api/tournaments/${tournament.id}/share`, bob, { method: "POST", body: "{}" })).status, 404);
+        assert.equal((await request(`/api/draws/${scheduledDraw.id}/tournament`, bob, {
+            method: "PUT", body: JSON.stringify({ tournamentId: tournament.id })
+        })).status, 404);
+        assert.equal((await request(`/api/draws/${scheduledDraw.id}/tournament`, alice, {
+            method: "PUT", body: JSON.stringify({ tournamentId: "unknown" })
+        })).status, 400);
+        assert.equal((await request(`/api/draws/${scheduledDraw.id}/tournament`, alice, {
+            method: "PUT", body: JSON.stringify({ tournamentId: tournament.id })
+        })).status, 200);
+        const newDraw = await (await request("/api/draws", alice, {
+            method: "POST", body: JSON.stringify({
+                name: "Unscheduled", sheet: "sheet123", worksheet: "Responses", tournamentId: tournament.id,
+                mapping: { name: 2, institute: 3, seed: 4, event: 1, eventValue: "Singles" }
+            })
+        })).json();
+        assert.equal(newDraw.tournamentId, tournament.id);
+        const tournamentShared = await (await request(`/api/tournaments/${tournament.id}/share`, alice, {
+            method: "POST", body: "{}"
+        })).json();
+        const tournamentToken = tournamentShared.shareToken;
+        const participantTournament = () => fetch(`${base}/api/participant/tournament`, {
+            headers: { Authorization: `Bearer ${tournamentToken}` }
+        });
+        let tournamentView = await (await participantTournament()).json();
+        assert.equal(tournamentView.name, "Championship");
+        assert.deepEqual(tournamentView.draws.map(item => item.id), [scheduledDraw.id]);
+        assert.equal(tournamentView.draws[0].rounds.flat().find(item => item.number === scheduledMatch.number).score, "21-12");
+        assert.ok(!JSON.stringify(tournamentView).includes("+14155552671"));
+        assert.ok(!JSON.stringify(tournamentView).includes(token));
+        assert.equal((await request(`/api/draws/${scheduledDraw.id}/share`, alice, { method: "DELETE", body: "{}" })).status, 200);
+        assert.equal((await participant()).status, 404);
+        assert.deepEqual((await (await participantTournament()).json()).draws.map(item => item.id), [scheduledDraw.id]);
+        const restoredShare = await (await request(`/api/draws/${scheduledDraw.id}/share`, alice, { method: "POST", body: "{}" })).json();
+        const restoredParticipant = () => fetch(`${base}/api/participant/draw`, {
+            headers: { Authorization: `Bearer ${restoredShare.shareToken}` }
+        });
+        assert.equal((await request(`/api/draws/${newDraw.id}/schedule`, alice, {
+            method: "PUT", body: JSON.stringify({ startAt: new Date(Date.now() + 3600000).toISOString(), courts: 2 })
+        })).status, 200);
+        tournamentView = await (await participantTournament()).json();
+        assert.equal(tournamentView.draws.length, 2);
+        assert.equal((await request(`/api/draws/${scheduledDraw.id}/tournament`, alice, {
+            method: "PUT", body: JSON.stringify({ tournamentId: null })
+        })).status, 200);
+        assert.deepEqual((await (await participantTournament()).json()).draws.map(item => item.id), [newDraw.id]);
+        assert.equal((await restoredParticipant()).status, 200);
+        assert.equal((await request(`/api/tournaments/${tournament.id}/share`, alice, { method: "DELETE", body: "{}" })).status, 200);
+        assert.equal((await participantTournament()).status, 404);
+        assert.equal((await restoredParticipant()).status, 200);
+        const tournamentRepublished = await (await request(`/api/tournaments/${tournament.id}/share`, alice, {
+            method: "POST", body: "{}"
+        })).json();
+        assert.notEqual(tournamentRepublished.shareToken, tournamentToken);
+        assert.equal((await participantTournament()).status, 404);
+        assert.equal((await request(`/api/draws/${newDraw.id}`, alice, { method: "DELETE" })).status, 200);
+        const emptyTournament = await fetch(`${base}/api/participant/tournament`, {
+            headers: { Authorization: `Bearer ${tournamentRepublished.shareToken}` }
+        });
+        assert.deepEqual((await emptyTournament.json()).draws, []);
         assert.equal((await request(`/api/draws/${scheduledDraw.id}/share`, bob, { method: "DELETE", body: "{}" })).status, 404);
         assert.equal((await request(`/api/draws/${scheduledDraw.id}/share`, alice, { method: "DELETE", body: "{}" })).status, 200);
         assert.equal((await participant()).status, 404);

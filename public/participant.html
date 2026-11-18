@@ -16,6 +16,11 @@
   <main class="participant-main">
     <div class="page-heading"><div><div class="eyebrow"><span class="dot"></span> PARTICIPANT DASHBOARD</div><h1>Your matches,<br><em>all in one place.</em></h1><p>Follow the draw and check your court and match time.</p></div><div class="heading-mark" aria-hidden="true">✳</div></div>
     <div id="participant-error" class="notice hidden" role="alert"></div>
+    <section id="participant-tournament" class="panel participant-panel hidden" aria-labelledby="participant-tournament-title">
+      <span class="step">TOURNAMENT</span><h2 id="participant-tournament-title"></h2>
+      <div id="participant-tournament-select-wrap"><label for="participant-draw-select">SELECT A DRAW</label><select id="participant-draw-select"></select></div>
+      <p id="participant-tournament-empty" class="fineprint hidden" role="status">There are no scheduled draws in this tournament yet.</p>
+    </section>
     <section id="participant-content" class="hidden">
       <div class="participant-heading"><div><span class="step">TOURNAMENT DRAW</span><h2 id="participant-title"></h2><p id="participant-meta" class="muted"></p></div><span class="live-pill"><span class="dot"></span>UPDATES EVERY 30 SEC</span></div>
       <div id="participant-pace" class="participant-pace hidden"></div>
@@ -28,6 +33,7 @@
       <section id="participant-draw-page" class="panel participant-panel" aria-labelledby="participant-draw-title">
         <span class="step">02 / TOURNAMENT BRACKET</span><h2 id="participant-draw-title">Draw &amp; results</h2>
         <p class="fineprint">Scheduled times use your device's local time zone and may change.</p>
+        <p class="fineprint mobile-bracket-hint">Swipe sideways to see more rounds.</p>
         <div id="participant-rounds" class="rounds"></div>
         <p id="participant-draw-no-results" class="fineprint hidden" role="status">No matches found. Try a different search.</p>
       </section>

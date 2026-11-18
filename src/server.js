@@ -73,6 +73,17 @@ app.get("/api/participant/draw", (req, res) => {
     refreshSchedule(draw);
     res.json(participantDraw(drawResponse(draw)));
 });
+app.get("/api/participant/tournament", (req, res) => {
+    const token = req.get("authorization")?.match(/^Bearer ([A-Za-z0-9_-]{43})$/)?.[1];
+    const tournament = token && store.getPublishedTournament(token);
+    if (!tournament) return res.status(404).json({ error: "This tournament is unavailable or the link has been revoked." });
+    const draws = store.list(tournament.owner).filter(draw => draw.tournamentId === tournament.id && draw.schedule)
+        .map(draw => {
+            refreshSchedule(draw);
+            return { id: draw.id, ...participantDraw(drawResponse(draw)) };
+        });
+    res.json({ name: tournament.name, draws });
+});
 app.get("/auth/google", (req, res, next) => {
     try {
         purgeExpired();
@@ -170,10 +181,44 @@ app.get("/api/sheets/event-values", asyncRoute(async (req, res) => {
     const values = [...new Set(data.rows.map(row => String(row[column] || "").trim()).filter(Boolean))].sort();
     res.json({ values });
 }));
+app.get("/api/tournaments", (req, res) => {
+    res.json(store.listTournaments(req.session.owner));
+});
+app.post("/api/tournaments", (req, res) => {
+    const name = req.body?.name;
+    if (typeof name !== "string" || !name.trim() || name.trim().length > 120) {
+        return res.status(400).json({ error: "Enter a tournament name (up to 120 characters)." });
+    }
+    const tournament = { id: crypto.randomUUID(), owner: req.session.owner,
+        name: name.trim(), createdAt: new Date().toISOString() };
+    store.saveTournament(tournament);
+    res.status(201).json(tournament);
+});
+app.post("/api/tournaments/:id/share", (req, res) => {
+    const tournament = store.getTournament(req.session.owner, req.params.id);
+    if (!tournament) return res.status(404).json({ error: "Tournament not found." });
+    if (!tournament.shareToken) {
+        tournament.shareToken = crypto.randomBytes(32).toString("base64url");
+        store.saveTournament(tournament);
+    }
+    res.json(tournament);
+});
+app.delete("/api/tournaments/:id/share", (req, res) => {
+    const tournament = store.getTournament(req.session.owner, req.params.id);
+    if (!tournament) return res.status(404).json({ error: "Tournament not found." });
+    if (tournament.shareToken) {
+        delete tournament.shareToken;
+        store.saveTournament(tournament);
+    }
+    res.json(tournament);
+});
 app.post("/api/draws", asyncRoute(async (req, res) => {
-    const { sheet, worksheet, mapping, name } = req.body;
+    const { sheet, worksheet, mapping, name, tournamentId } = req.body;
     if (typeof name !== "string" || !name.trim() || name.trim().length > 120) {
         return res.status(400).json({ error: "Enter a draw name (up to 120 characters)." });
+    }
+    if (tournamentId != null && (typeof tournamentId !== "string" || !store.getTournament(req.session.owner, tournamentId))) {
+        return res.status(400).json({ error: "Choose one of your tournaments." });
     }
     const data = await readWorksheet(sheetsAuth(req.session), sheet, worksheet);
     const players = mapPlayers(data, mapping);
@@ -184,14 +229,27 @@ app.post("/api/draws", asyncRoute(async (req, res) => {
         id: crypto.randomUUID(), owner: req.session.owner, name: name.trim(),
         createdAt: new Date().toISOString(), playerCount: players.length,
         bracketSize: bracket.bracketSize, institutePenalty: bracket.institutePenalty,
-        warnings: validation.warnings, rounds: createMatches(bracket.slots)
+        warnings: validation.warnings, rounds: createMatches(bracket.slots),
+        ...(tournamentId ? { tournamentId } : {})
     };
     store.save(draw);
     res.status(201).json(drawResponse(draw));
 }));
 app.get("/api/draws", (req, res) => {
-    res.json(store.list(req.session.owner).map(({ id, name, createdAt, playerCount, bracketSize }) =>
-        ({ id, name, createdAt, playerCount, bracketSize })).reverse());
+    res.json(store.list(req.session.owner).map(({ id, name, createdAt, playerCount, bracketSize, tournamentId }) =>
+        ({ id, name, createdAt, playerCount, bracketSize, tournamentId })).reverse());
+});
+app.put("/api/draws/:id/tournament", (req, res) => {
+    const draw = store.get(req.session.owner, req.params.id);
+    if (!draw) return res.status(404).json({ error: "Draw not found." });
+    const tournamentId = req.body?.tournamentId;
+    if (tournamentId !== null && (typeof tournamentId !== "string" || !store.getTournament(req.session.owner, tournamentId))) {
+        return res.status(400).json({ error: "Choose one of your tournaments or remove the assignment." });
+    }
+    if (tournamentId === null) delete draw.tournamentId;
+    else draw.tournamentId = tournamentId;
+    store.save(draw);
+    res.json(drawResponse(draw));
 });
 app.get("/api/draws/:id", (req, res) => {
     const draw = store.get(req.session.owner, req.params.id);

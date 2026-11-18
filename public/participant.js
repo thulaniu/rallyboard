@@ -1,10 +1,13 @@
 "use strict";
 
 const $ = id => document.getElementById(id);
-const token = location.hash.slice(1);
+const fragment = location.hash.slice(1);
+const tournamentLink = fragment.startsWith("t/");
+const token = tournamentLink ? fragment.slice(2) : fragment;
 let inFlight = false;
 let revoked = false;
 let currentDraw = null;
+let tournamentDraws = [];
 let participantPage = "draw";
 
 function showPage(name) {
@@ -20,6 +23,13 @@ function showPage(name) {
 $("participant-nav-draw").addEventListener("click", () => showPage("draw"));
 $("participant-nav-schedule").addEventListener("click", () => showPage("schedule"));
 $("participant-search").addEventListener("input", () => { if (currentDraw) render(currentDraw); });
+$("participant-draw-select").addEventListener("change", event => {
+    const draw = tournamentDraws.find(item => item.id === event.currentTarget.value);
+    if (draw) {
+        $("participant-search").value = "";
+        render(draw);
+    }
+});
 showPage(participantPage);
 
 function element(tag, text, className) {
@@ -123,18 +133,38 @@ async function refresh() {
     }
     inFlight = true;
     try {
-        const response = await fetch("/api/participant/draw", {
+        const response = await fetch(tournamentLink ? "/api/participant/tournament" : "/api/participant/draw", {
             headers: { Authorization: `Bearer ${token}` }, cache: "no-store", credentials: "omit"
         });
         if (response.status === 404) {
             revoked = true;
             currentDraw = null;
             $("participant-content").classList.add("hidden");
-            throw new Error("This draw is unavailable or the link has been revoked. Ask your organizer for a current link.");
+            $("participant-tournament").classList.add("hidden");
+            throw new Error("This link is unavailable or has been revoked. Ask your organizer for a current link.");
         }
         if (!response.ok) throw new Error(`Unable to update the dashboard (HTTP ${response.status}). Please try again.`);
-        const draw = await response.json();
-        render(draw);
+        const data = await response.json();
+        if (tournamentLink) {
+            tournamentDraws = data.draws;
+            $("participant-tournament").classList.remove("hidden");
+            $("participant-tournament-title").textContent = data.name;
+            const select = $("participant-draw-select");
+            const selected = select.value;
+            select.replaceChildren();
+            for (const draw of tournamentDraws) select.add(new Option(draw.name, draw.id));
+            const chosen = tournamentDraws.find(draw => draw.id === selected) || tournamentDraws[0];
+            $("participant-tournament-empty").classList.toggle("hidden", Boolean(chosen));
+            $("participant-tournament-select-wrap").classList.toggle("hidden", !chosen);
+            if (chosen) {
+                if (selected && selected !== chosen.id) $("participant-search").value = "";
+                select.value = chosen.id;
+                render(chosen);
+            } else {
+                currentDraw = null;
+                $("participant-content").classList.add("hidden");
+            }
+        } else render(data);
         $("participant-error").classList.add("hidden");
     } catch (error) {
         $("participant-error").textContent = error.message;

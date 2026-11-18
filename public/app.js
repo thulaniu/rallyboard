@@ -3,6 +3,7 @@
 const $ = id => document.getElementById(id);
 let worksheetData = null;
 let currentDraw = null;
+let tournaments = [];
 
 function currentPage() {
     return location.hash.split("/")[0] === "#schedule" ? "schedule" : "draw";
@@ -28,6 +29,16 @@ window.addEventListener("hashchange", async () => {
     }
     updateNavigation();
 });
+
+for (const page of ["draw", "schedule"]) {
+    $(`nav-${page}`).addEventListener("click", event => {
+        if (!currentDraw || !matchMedia("(max-width: 850px)").matches) return;
+        event.preventDefault();
+        location.hash = `#${page}/${currentDraw.id}`;
+        updateNavigation();
+        $(`${page}-page`).scrollIntoView();
+    });
+}
 
 async function api(url, options = {}) {
     const response = await fetch(url, {
@@ -83,21 +94,115 @@ async function refreshDraws() {
         message.textContent = "No saved draws yet.";
         list.append(message);
     }
-    for (const draw of draws) {
-        const button = document.createElement("button");
-        button.className = "draw-item";
-        const title = document.createElement("strong");
-        title.textContent = draw.name;
-        const meta = document.createElement("small");
-        meta.textContent = `${draw.playerCount} players · ${new Date(draw.createdAt).toLocaleDateString()}`;
-        button.append(title, meta);
-        button.addEventListener("click", () => action(button, async () => {
-            showDraw(await api(`/api/draws/${draw.id}`));
-            location.hash = `#${currentPage()}/${draw.id}`;
-        }));
-        list.append(button);
+    const groups = [...tournaments.map(item => ({ name: item.name, id: item.id })),
+        { name: "Unassigned", id: null }];
+    for (const group of groups) {
+        const items = draws.filter(draw => group.id === null
+            ? !draw.tournamentId || !tournaments.some(item => item.id === draw.tournamentId)
+            : draw.tournamentId === group.id);
+        if (!items.length) continue;
+        const heading = document.createElement("h3");
+        heading.className = "draw-group-title";
+        heading.textContent = group.name;
+        list.append(heading);
+        for (const draw of items) {
+            const button = document.createElement("button");
+            button.className = "draw-item";
+            const title = document.createElement("strong");
+            title.textContent = draw.name;
+            const meta = document.createElement("small");
+            meta.textContent = `${draw.playerCount} players · ${new Date(draw.createdAt).toLocaleDateString()}`;
+            button.append(title, meta);
+            button.addEventListener("click", () => action(button, async () => {
+                showDraw(await api(`/api/draws/${draw.id}`));
+                location.hash = `#${currentPage()}/${draw.id}`;
+                if (matchMedia("(max-width: 850px)").matches) $(`${currentPage()}-page`).scrollIntoView();
+            }));
+            list.append(button);
+        }
     }
 }
+
+function updateTournamentSelects() {
+    const options = tournaments.map(item => [item.name, item.id]);
+    for (const [id, label] of [["tournament-manage", "Select a tournament"],
+        ["new-draw-tournament", "No tournament"], ["draw-tournament", "No tournament"]]) {
+        const selected = $(id).value;
+        fillSelect($(id), options, label);
+        $(id).value = options.some(([, value]) => value === selected) ? selected : "";
+    }
+}
+
+function renderTournamentSharing() {
+    const tournament = tournaments.find(item => item.id === $("tournament-manage").value);
+    $("tournament-sharing").classList.toggle("hidden", !tournament);
+    $("tournament-link-wrap").classList.toggle("hidden", !tournament?.shareToken);
+    $("tournament-share-toggle").textContent = tournament?.shareToken ? "Unpublish tournament" : "Publish tournament";
+    $("tournament-link").value = tournament?.shareToken ? `${location.origin}/participant.html#t/${tournament.shareToken}` : "";
+}
+
+async function refreshTournaments() {
+    tournaments = await api("/api/tournaments");
+    updateTournamentSelects();
+    renderTournamentSharing();
+}
+
+$("tournament-form").addEventListener("submit", event => {
+    event.preventDefault();
+    action($("tournament-create"), async () => {
+        const tournament = await api("/api/tournaments", {
+            method: "POST", body: JSON.stringify({ name: $("tournament-name").value })
+        });
+        $("tournament-name").value = "";
+        await refreshTournaments();
+        $("tournament-manage").value = tournament.id;
+        $("new-draw-tournament").value = tournament.id;
+        renderTournamentSharing();
+        await refreshDraws();
+    });
+});
+$("tournament-manage").addEventListener("change", renderTournamentSharing);
+$("tournament-share-toggle").addEventListener("click", event => {
+    const tournament = tournaments.find(item => item.id === $("tournament-manage").value);
+    if (!tournament) return;
+    const published = Boolean(tournament.shareToken);
+    if (!confirm(published
+        ? "Unpublish this tournament? Its current link will stop working; individual draw links remain active."
+        : "Publish this tournament? Anyone with the link can see all scheduled draws assigned now or later.")) return;
+    action(event.currentTarget, async () => {
+        await api(`/api/tournaments/${encodeURIComponent(tournament.id)}/share`, {
+            method: published ? "DELETE" : "POST", body: "{}"
+        });
+        await refreshTournaments();
+    });
+});
+$("tournament-copy").addEventListener("click", event => action(event.currentTarget, async () => {
+    if (!navigator.clipboard) throw new Error("Copy is unavailable here. Select the link and copy it manually.");
+    await navigator.clipboard.writeText($("tournament-link").value);
+}));
+$("draw-tournament").addEventListener("change", event => {
+    const select = event.currentTarget;
+    const old = currentDraw?.tournamentId || "";
+    const tournament = tournaments.find(item => item.id === select.value);
+    if (tournament?.shareToken && currentDraw?.schedule &&
+        !confirm("This scheduled draw will be visible to anyone with the tournament link. Continue?")) {
+        select.value = old;
+        return;
+    }
+    action(select, async () => {
+        let updated;
+        try {
+            updated = await api(`/api/draws/${encodeURIComponent(currentDraw.id)}/tournament`, {
+                method: "PUT", body: JSON.stringify({ tournamentId: select.value || null })
+            });
+        } catch (error) {
+            select.value = old;
+            throw error;
+        }
+        if (currentDraw?.id === updated.id) currentDraw = updated;
+        await refreshDraws();
+    });
+});
 
 function showDraw(draw) {
     if (currentDraw?.id !== draw.id) {
@@ -107,6 +212,7 @@ function showDraw(draw) {
         $("reminder-columns").classList.add("hidden");
     }
     currentDraw = draw;
+    $("draw-tournament").value = draw.tournamentId || "";
     $("empty-bracket").classList.add("hidden");
     $("draw-view").classList.remove("hidden");
     $("draw-title").textContent = draw.name;
@@ -375,6 +481,7 @@ function renderSchedule(draw) {
     const matches = new Map(draw.rounds.flat().map(match => [match.number, match]));
     const sorted = [...schedule.matches].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt) || a.court - b.court);
     const format = value => new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    const labels = ["Time", "Court", "Match", "Players", "Status"];
     for (const entry of sorted) {
         const match = matches.get(entry.matchNumber);
         const row = document.createElement("tr");
@@ -387,8 +494,9 @@ function renderSchedule(draw) {
         const actual = entry.startedAt ? ` · Started: ${format(entry.startedAt)}${entry.finishedAt ? ` · Finished: ${format(entry.finishedAt)}` : ""}` : "";
         const values = [`${format(entry.startAt)} – ${format(entry.endAt)}${actual}`, `Court ${entry.court}`,
             `${match.roundName} · #${match.number}`, playerText, status];
-        for (const text of values) {
+        for (const [index, text] of values.entries()) {
             const cell = document.createElement("td");
+            cell.dataset.label = labels[index];
             cell.textContent = text;
             row.append(cell);
         }
@@ -404,7 +512,11 @@ function renderSchedule(draw) {
         const values = ["Not recorded", "Not recorded", `${match.roundName} · #${match.number}`,
             match.players.map(player => player?.name || "To be decided").join(" vs "),
             `Finished${winner ? ` · Winner: ${winner.name}` : ""}${match.score ? ` · ${match.score}` : ""}`];
-        for (const text of values) row.insertCell().textContent = text;
+        for (const [index, text] of values.entries()) {
+            const cell = row.insertCell();
+            cell.dataset.label = labels[index];
+            cell.textContent = text;
+        }
     }
     applyMatchFilter();
 }
@@ -450,6 +562,9 @@ $("schedule-form").addEventListener("submit", event => {
     action($("schedule-save"), async () => {
         const date = new Date($("schedule-start").value);
         if (!Number.isFinite(date.getTime())) throw new Error("Select a valid start date and time.");
+        const tournament = tournaments.find(item => item.id === currentDraw.tournamentId);
+        if (!currentDraw.schedule && tournament?.shareToken &&
+            !confirm("Scheduling this draw makes it visible to anyone with the tournament link. Continue?")) return;
         const draw = await api(`/api/draws/${currentDraw.id}/schedule`, {
             method: "PUT",
             body: JSON.stringify({ startAt: date.toISOString(), courts: Number($("schedule-courts").value) })
@@ -541,11 +656,14 @@ $("draw-form").addEventListener("submit", event => {
     event.preventDefault();
     action($("generate"), async () => {
         if (!worksheetData || $("columns").classList.contains("hidden")) throw new Error("Load and map the sheet columns first.");
+        const tournament = tournaments.find(item => item.id === $("new-draw-tournament").value);
+        if (tournament?.shareToken && !confirm("This draw will become visible to anyone with the tournament link when it is scheduled. Continue?")) return;
         const index = id => $(id).value === "" ? null : Number($(id).value);
         const draw = await api("/api/draws", {
             method: "POST",
             body: JSON.stringify({
                 name: $("draw-name").value, sheet: $("sheet").value, worksheet: $("worksheet").value,
+                tournamentId: $("new-draw-tournament").value || null,
                 mapping: {
                     name: index("name-column"), institute: index("institute-column"), seed: index("seed-column"),
                     event: index("event-column"), eventValue: $("event-value").value
@@ -555,6 +673,7 @@ $("draw-form").addEventListener("submit", event => {
         showDraw(draw);
         location.hash = `#draw/${draw.id}`;
         await refreshDraws();
+        if (matchMedia("(max-width: 850px)").matches) $("draw-page").scrollIntoView();
     });
 });
 $("delete").addEventListener("click", event => {
@@ -583,6 +702,7 @@ async function init() {
             $("account").classList.remove("hidden");
             $("main-nav").classList.remove("hidden");
             $("account-name").textContent = session.user.email;
+            await refreshTournaments();
             await refreshDraws();
             const id = location.hash.split("/")[1];
             if (id) showDraw(await api(`/api/draws/${encodeURIComponent(id)}`));
